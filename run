@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+TEST_OUT = Path("output/testing")
+
+
+# ##################################################################
+# run shell
+# executes a shell command and returns exit code
+def _run(cmd: list[str]) -> int:
+    return subprocess.call(cmd)
+
+
+# ##################################################################
+# command app
+# launch the notepad application
+def command_app(args: argparse.Namespace) -> int:
+    sys.path.insert(0, str(Path(__file__).parent / "src"))
+    from notepad import main
+    return main(args.file)
+
+
+# ##################################################################
+# command test
+# run tests for a specific file
+def command_test(args: argparse.Namespace) -> int:
+    TEST_OUT.mkdir(parents=True, exist_ok=True)
+    target = args.target
+    _run(["pytest", "-q", target, "--maxfail=1", "--disable-warnings"])
+    return 0
+
+
+# ##################################################################
+# command lint
+# run linter on source files
+def command_lint(_: argparse.Namespace) -> int:
+    return _run(["ruff", "check", "--line-length", "120", "src/"])
+
+
+# ##################################################################
+# command check
+# run full verification suite
+def command_check(_: argparse.Namespace) -> int:
+    lint_rc = _run(["ruff", "check", "--line-length", "120", "src/"])
+    if lint_rc != 0:
+        return lint_rc
+    return 0
+
+
+# ##################################################################
+# main
+# parse arguments and dispatch to commands
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="run", description="Mac Notepad development tool")
+    sub = parser.add_subparsers(dest="cmd")
+
+    p_app = sub.add_parser("app", help="Launch notepad application")
+    p_app.add_argument("file", nargs="?", help="File to open")
+    p_app.set_defaults(func=command_app)
+
+    p_test = sub.add_parser("test", help="Run a single test target")
+    p_test.add_argument("target", help="e.g. src/notepad_test.py::test_something")
+    p_test.set_defaults(func=command_test)
+
+    p_lint = sub.add_parser("lint", help="Run linter")
+    p_lint.set_defaults(func=command_lint)
+
+    p_check = sub.add_parser("check", help="Run full verification")
+    p_check.set_defaults(func=command_check)
+
+    args = parser.parse_args(argv)
+    if args.cmd is None:
+        return command_app(argparse.Namespace(file=None))
+    return args.func(args)
+
+
+# ##################################################################
+# entry point
+# standard python dispatch
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+# ##################################################################
+# notepad
+# simple command line wrapper to launch mac-notepad with a file argument
+import sys
+from pathlib import Path
+
+script_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(script_dir / "src"))
+
+from notepad import main  # noqa: E402
+
+if __name__ == "__main__":
+    filepath = sys.argv[1] if len(sys.argv) > 1 else None
+    sys.exit(main(filepath))
